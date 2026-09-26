@@ -398,6 +398,10 @@ BASE_STYLE = """
   .back { display:inline-block; margin-bottom:16px; color:#555; text-decoration:none; }
   .big-badge { font-size:32px; padding:14px 22px; }
   form.rate { margin-top:20px; background:white; padding:18px; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,0.08); max-width:360px; }
+  #micBtn { background:#1565c0; margin-bottom:8px; }
+  #micBtn:hover { background:#0d47a1; }
+  #micBtn:disabled { background:#999; cursor:wait; }
+  .mic-status { font-size:12px; color:#666; min-height:16px; margin:4px 0 12px; }
   input[type=range] { width:100%; }
   button { background:#222; color:white; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; font-size:14px; }
   button:hover { background:#444; }
@@ -446,11 +450,86 @@ DETAIL_HTML = """
 
   <form class="rate" method="POST" action="/location/{{ loc.id }}/rate">
     <label for="level"><strong>Rate the noise here right now (1 = silent, 10 = very loud):</strong></label><br><br>
+
+    <button type="button" id="micBtn" onclick="measureNoise()">🎤 Measure with mic (3s)</button>
+    <p id="micStatus" class="mic-status"></p>
+
     <input type="range" min="1" max="10" value="5" name="level" id="level"
            oninput="document.getElementById('levelval').innerText=this.value">
     <p>Selected: <span id="levelval">5</span>/10</p>
     <button type="submit">Submit rating</button>
   </form>
+
+  <script>
+    async function measureNoise() {
+      const btn = document.getElementById('micBtn');
+      const status = document.getElementById('micStatus');
+      const slider = document.getElementById('level');
+      const label = document.getElementById('levelval');
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        status.textContent = "Mic access isn't supported in this browser — use the slider instead.";
+        return;
+      }
+
+      btn.disabled = true;
+      status.textContent = "Listening... hold still for 3 seconds.";
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser);
+
+        const data = new Uint8Array(analyser.fftSize);
+        const samples = [];
+        const durationMs = 3000;
+        const start = Date.now();
+
+        function sample() {
+          analyser.getByteTimeDomainData(data);
+          // Root-mean-square deviation from the midpoint (128) = amplitude, 0-1
+          let sumSquares = 0;
+          for (let i = 0; i < data.length; i++) {
+            const dev = (data[i] - 128) / 128;
+            sumSquares += dev * dev;
+          }
+          samples.push(Math.sqrt(sumSquares / data.length));
+
+          if (Date.now() - start < durationMs) {
+            requestAnimationFrame(sample);
+          } else {
+            finish();
+          }
+        }
+
+        function finish() {
+          stream.getTracks().forEach(track => track.stop());
+          audioCtx.close();
+
+          const avgRms = samples.reduce((a, b) => a + b, 0) / samples.length;
+          // Convert amplitude to a rough dB-like scale, then map to 1-10.
+          // This is a RELATIVE loudness estimate, not a calibrated dB(SPL) reading —
+          // phone mics aren't calibrated instruments, so treat it as "quiet vs loud," not exact.
+          const db = 20 * Math.log10(Math.max(avgRms, 0.0001)); // roughly -80 (silent) to 0 (max)
+          const normalized = Math.min(Math.max((db + 70) / 70, 0), 1); // -70..0 -> 0..1
+          const level = Math.round(1 + normalized * 9);
+
+          slider.value = level;
+          label.textContent = level;
+          status.textContent = "Measured " + level + "/10 (approximate — feel free to adjust before submitting).";
+          btn.disabled = false;
+        }
+
+        requestAnimationFrame(sample);
+      } catch (err) {
+        status.textContent = "Couldn't access the mic (permission denied or unavailable) — use the slider instead.";
+        btn.disabled = false;
+      }
+    }
+  </script>
 
   {% if recent %}
   <table>
