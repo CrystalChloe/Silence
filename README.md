@@ -43,6 +43,20 @@ the same wifi, e.g. http://192.168.1.23:5000).
   - Photos for one location: `GET /api/location/<id>/photos` (JSON: id, image
     URL, caption, timestamp) if you want to pull the data into another app.
   - Files are served back out at `/uploads/<filename>`.
+- **Mic-based measurement (`/location/<id>` page)**: instead of guessing a
+  number, students can tap "Measure with mic (3s)" to let their phone's
+  microphone listen to the room for 3 seconds and auto-fill the slider with
+  an estimated level. This reads *relative* loudness (quiet vs. loud), not a
+  calibrated decibel(SPL) reading — phone mics aren't calibrated instruments,
+  so treat it as a smart starting point, not a lab-grade measurement.
+  Students can still adjust the slider before submitting. If mic access is
+  denied or unsupported, the manual slider works exactly as before.
+  - Requires HTTPS, with one exception: it also works at `http://127.0.0.1`
+    (localhost) for local testing. It will **not** work if you access the
+    app over plain HTTP via your laptop's local network IP
+    (e.g. `http://192.168.1.23:5000`) — browsers block microphone access on
+    non-secure origins except localhost. Once deployed (e.g. on Render),
+    the public link is HTTPS by default, so it works there too.
 
 ## Customizing locations
 
