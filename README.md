@@ -1,4 +1,4 @@
-# Shh! - Campus Quiet Tracker
+# Silence
 
 A Flask + SQLite web app for tracking how quiet or loud spots on campus are.
 
