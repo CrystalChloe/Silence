@@ -419,9 +419,9 @@ BASE_STYLE = """
 """
 
 DASHBOARD_HTML = """
-<!doctype html><html><head><title>Shh! Campus Quiet Levels</title>""" + BASE_STYLE + """</head>
+<!doctype html><html><head><title>Silence - Campus Quiet Levels</title>""" + BASE_STYLE + """</head>
 <body>
-  <h1>🤫 Shh! Campus Quiet Tracker</h1>
+  <h1>🤫 Silence</h1>
   <p class="subtitle">Sorted quietest first. Tap a spot to rate it or see details.</p>
   <div class="grid">
   {% for loc in board %}
