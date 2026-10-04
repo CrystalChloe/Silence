@@ -1,5 +1,5 @@
 """
-Shh! - School Quietness Tracker
+Silence
 ================================
 
 A small Flask + SQLite app that lets students:
